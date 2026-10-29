@@ -1,0 +1,7 @@
+{
+  "name": "@tn/config",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Configurations TypeScript partagées",
+  "files": ["tsconfig.base.json"]
+}

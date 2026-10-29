@@ -1,0 +1,27 @@
+{
+  "name": "tunis-nightlife",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Plateforme Web + mobile de découverte d'établissements nocturnes et d'événements en Tunisie (projet portfolio).",
+  "packageManager": "pnpm@10.18.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "db:up": "docker compose up -d db",
+    "db:down": "docker compose down",
+    "contracts:build": "pnpm --filter @tn/contracts build",
+    "api:dev": "pnpm --filter @tn/api dev",
+    "web:dev": "pnpm --filter @tn/web dev",
+    "mobile:dev": "pnpm --filter @tn/mobile start",
+    "db:migrate": "pnpm --filter @tn/api prisma:migrate",
+    "db:seed": "pnpm --filter @tn/api prisma:seed",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "format": "prettier --write ."
+  },
+  "devDependencies": {
+    "prettier": "^3.6.2",
+    "typescript": "~5.9.3"
+  }
+}

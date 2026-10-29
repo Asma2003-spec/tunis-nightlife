@@ -1,0 +1,13 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+
+# Dépendances natives autorisées à exécuter leurs scripts d'installation
+onlyBuiltDependencies:
+  - "@prisma/client"
+  - "@prisma/engines"
+  - "prisma"
+  - "@nestjs/core"
+  - "esbuild"
+  - "@tailwindcss/oxide"
+  - "sharp"

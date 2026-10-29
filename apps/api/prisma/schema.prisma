@@ -1,0 +1,322 @@
+// =====================================================================
+// Tunis Nightlife — schéma de base de données (MVP)
+// PostgreSQL 16 + PostGIS 3
+//
+// Conventions :
+//  - Identifiants UUID générés par la base.
+//  - Toutes les dates sont stockées en UTC (timestamptz) et affichées
+//    dans le fuseau Africa/Tunis côté client.
+//  - Les contraintes CHECK, le trigger de géolocalisation et l'index GiST
+//    sont définis dans la migration SQL (Prisma ne les modélise pas).
+//  - La note moyenne n'est JAMAIS stockée à la main : elle est calculée
+//    à partir des avis au statut PUBLISHED.
+// =====================================================================
+
+generator client {
+  provider        = "prisma-client"
+  output          = "../src/generated/prisma"
+  moduleFormat    = "cjs"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+// L'URL de connexion est définie dans prisma.config.ts (Prisma 7).
+datasource db {
+  provider   = "postgresql"
+  extensions = [postgis]
+}
+
+// ---------------------------------------------------------------------
+// Énumérations
+// ---------------------------------------------------------------------
+
+enum UserRole {
+  USER
+  MODERATOR
+  ADMIN
+}
+
+enum VenueType {
+  NIGHTCLUB
+  LOUNGE
+  BAR
+  ROOFTOP
+  BEACH_CLUB
+}
+
+enum PriceRange {
+  BUDGET
+  MODERATE
+  EXPENSIVE
+  LUXURY
+}
+
+enum VenueStatus {
+  DRAFT
+  PENDING
+  PUBLISHED
+  SUSPENDED
+}
+
+enum ReviewStatus {
+  PENDING
+  PUBLISHED
+  REJECTED
+}
+
+enum EventStatus {
+  DRAFT
+  PUBLISHED
+  CANCELLED
+}
+
+enum ReportTarget {
+  VENUE
+  REVIEW
+  EVENT
+}
+
+enum ReportStatus {
+  OPEN
+  RESOLVED
+  DISMISSED
+}
+
+// ---------------------------------------------------------------------
+// Utilisateurs
+// ---------------------------------------------------------------------
+
+model User {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name           String    @db.VarChar(80)
+  /// Toujours enregistré en minuscules (normalisé par l'API) — unicité insensible à la casse.
+  email          String    @unique @db.VarChar(254)
+  passwordHash   String    @map("password_hash")
+  role           UserRole  @default(USER)
+  /// Date à laquelle l'utilisateur a confirmé être majeur.
+  ageConfirmedAt DateTime? @map("age_confirmed_at") @db.Timestamptz(3)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  /// Suppression logique : les données personnelles sont anonymisées par l'API.
+  deletedAt      DateTime? @map("deleted_at") @db.Timestamptz(3)
+
+  reviews          Review[]   @relation("ReviewAuthor")
+  moderatedReviews Review[]   @relation("ReviewModerator")
+  favorites        Favorite[]
+  reports          Report[]   @relation("ReportReporter")
+  handledReports   Report[]   @relation("ReportHandler")
+  createdVenues    Venue[]    @relation("VenueCreator")
+
+  @@map("users")
+}
+
+// ---------------------------------------------------------------------
+// Référentiels
+// ---------------------------------------------------------------------
+
+model City {
+  id     String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  slug   String  @unique @db.VarChar(60)
+  name   String  @db.VarChar(80)
+  /// Nom arabe pour l'interface RTL
+  nameAr String? @map("name_ar") @db.VarChar(80)
+
+  venues Venue[]
+
+  @@map("cities")
+}
+
+model MusicGenre {
+  id   String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  slug String @unique @db.VarChar(40)
+  name String @db.VarChar(60)
+
+  venues VenueGenre[]
+
+  @@map("music_genres")
+}
+
+// ---------------------------------------------------------------------
+// Établissements
+// ---------------------------------------------------------------------
+
+model Venue {
+  id          String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  slug        String      @unique @db.VarChar(120)
+  name        String      @db.VarChar(120)
+  description String
+  type        VenueType
+  cityId      String      @map("city_id") @db.Uuid
+  address     String      @db.VarChar(255)
+  /// Saisies par l'administrateur ; la colonne PostGIS `location` est
+  /// calculée automatiquement par un trigger à partir de ces valeurs.
+  latitude    Float
+  longitude   Float
+  /// geography(Point, 4326) — gérée par trigger, indexée en GiST.
+  location    Unsupported("geography(Point, 4326)")?
+  priceRange  PriceRange  @map("price_range")
+  phone       String?     @db.VarChar(30)
+  website     String?     @db.VarChar(255)
+  instagram   String?     @db.VarChar(60)
+  status      VenueStatus @default(DRAFT)
+  /// true pour les établissements fictifs de démonstration du portfolio.
+  isDemo      Boolean     @default(false) @map("is_demo")
+  /// Date de dernière vérification des informations (affichée publiquement).
+  lastVerifiedAt DateTime? @map("last_verified_at") @db.Timestamptz(3)
+  createdById String?     @map("created_by_id") @db.Uuid
+  createdAt   DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime    @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  city         City           @relation(fields: [cityId], references: [id], onDelete: Restrict)
+  createdBy    User?          @relation("VenueCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  photos       VenuePhoto[]
+  openingHours OpeningHours[]
+  genres       VenueGenre[]
+  reviews      Review[]
+  events       Event[]
+  favorites    Favorite[]
+
+  @@index([status, cityId])
+  @@index([status, type])
+  @@index([location], type: Gist)
+  @@map("venues")
+}
+
+model VenueGenre {
+  venueId String @map("venue_id") @db.Uuid
+  genreId String @map("genre_id") @db.Uuid
+
+  venue Venue      @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  genre MusicGenre @relation(fields: [genreId], references: [id], onDelete: Cascade)
+
+  @@id([venueId, genreId])
+  @@index([genreId])
+  @@map("venue_genres")
+}
+
+model VenuePhoto {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  venueId    String   @map("venue_id") @db.Uuid
+  /// Clé dans le stockage objet (S3 compatible) — jamais une URL brute fournie par le client.
+  storageKey String   @map("storage_key") @db.VarChar(255)
+  altText    String   @map("alt_text") @db.VarChar(160)
+  position   Int      @db.SmallInt
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  venue Venue @relation(fields: [venueId], references: [id], onDelete: Cascade)
+
+  @@unique([venueId, position])
+  @@map("venue_photos")
+}
+
+/// Horaires d'ouverture hebdomadaires.
+/// opensAt / closesAt = minutes depuis minuit (0–1439).
+/// Si closesAt <= opensAt, la plage se termine le lendemain (ex. 23:00 → 05:00).
+model OpeningHours {
+  id      String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  venueId String @map("venue_id") @db.Uuid
+  /// 0 = dimanche … 6 = samedi
+  weekday Int    @db.SmallInt
+  opensAt  Int   @map("opens_at") @db.SmallInt
+  closesAt Int   @map("closes_at") @db.SmallInt
+
+  venue Venue @relation(fields: [venueId], references: [id], onDelete: Cascade)
+
+  @@unique([venueId, weekday, opensAt])
+  @@map("opening_hours")
+}
+
+// ---------------------------------------------------------------------
+// Avis
+// ---------------------------------------------------------------------
+
+model Review {
+  id            String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId        String       @map("user_id") @db.Uuid
+  venueId       String       @map("venue_id") @db.Uuid
+  /// Entier de 1 à 5 (contrainte CHECK en base)
+  rating        Int          @db.SmallInt
+  comment       String
+  status        ReviewStatus @default(PENDING)
+  moderatedById String?      @map("moderated_by_id") @db.Uuid
+  moderatedAt   DateTime?    @map("moderated_at") @db.Timestamptz(3)
+  createdAt     DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user        User  @relation("ReviewAuthor", fields: [userId], references: [id], onDelete: Cascade)
+  venue       Venue @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  moderatedBy User? @relation("ReviewModerator", fields: [moderatedById], references: [id], onDelete: SetNull)
+
+  /// Un seul avis par utilisateur et par établissement (MVP).
+  @@unique([userId, venueId])
+  @@index([venueId, status])
+  @@index([status, createdAt])
+  @@map("reviews")
+}
+
+// ---------------------------------------------------------------------
+// Événements
+// ---------------------------------------------------------------------
+
+model Event {
+  id          String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  venueId     String      @map("venue_id") @db.Uuid
+  slug        String      @unique @db.VarChar(140)
+  title       String      @db.VarChar(140)
+  description String
+  /// UTC — contrainte CHECK : endsAt > startsAt
+  startsAt    DateTime    @map("starts_at") @db.Timestamptz(3)
+  endsAt      DateTime    @map("ends_at") @db.Timestamptz(3)
+  coverKey    String?     @map("cover_key") @db.VarChar(255)
+  status      EventStatus @default(DRAFT)
+  createdAt   DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime    @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  venue Venue @relation(fields: [venueId], references: [id], onDelete: Cascade)
+
+  @@index([status, startsAt])
+  @@index([venueId, startsAt])
+  @@map("events")
+}
+
+// ---------------------------------------------------------------------
+// Favoris
+// ---------------------------------------------------------------------
+
+model Favorite {
+  userId    String   @map("user_id") @db.Uuid
+  venueId   String   @map("venue_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  venue Venue @relation(fields: [venueId], references: [id], onDelete: Cascade)
+
+  @@id([userId, venueId])
+  @@index([venueId])
+  @@map("favorites")
+}
+
+// ---------------------------------------------------------------------
+// Signalements
+// ---------------------------------------------------------------------
+
+/// Cible polymorphe (établissement, avis ou événement) : l'existence de
+/// la cible est vérifiée par l'API au moment du signalement.
+model Report {
+  id          String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  reporterId  String       @map("reporter_id") @db.Uuid
+  targetType  ReportTarget @map("target_type")
+  targetId    String       @map("target_id") @db.Uuid
+  reason      String       @db.VarChar(60)
+  details     String?      @db.VarChar(1000)
+  status      ReportStatus @default(OPEN)
+  handledById String?      @map("handled_by_id") @db.Uuid
+  handledAt   DateTime?    @map("handled_at") @db.Timestamptz(3)
+  createdAt   DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  reporter  User  @relation("ReportReporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  handledBy User? @relation("ReportHandler", fields: [handledById], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([targetType, targetId])
+  @@map("reports")
+}
