@@ -160,6 +160,22 @@ export const LoginSchema = z.object({
 });
 export type LoginInput = z.input<typeof LoginSchema>;
 
+/** « Mot de passe oublié » : demande d'un lien par email. */
+export const ForgotPasswordSchema = z.object({
+  email: z
+    .email('Adresse email invalide')
+    .max(254)
+    .transform((e) => e.toLowerCase()),
+});
+export type ForgotPasswordInput = z.input<typeof ForgotPasswordSchema>;
+
+/** Nouveau mot de passe choisi depuis le lien reçu par email. */
+export const ResetPasswordSchema = z.object({
+  token: z.string().regex(/^[A-Za-z0-9_-]{43}$/, 'Lien invalide ou expiré'),
+  password: z.string().min(8, 'Au moins 8 caractères').max(128, '128 caractères maximum'),
+});
+export type ResetPasswordInput = z.input<typeof ResetPasswordSchema>;
+
 export interface PublicUser {
   id: string;
   name: string;

@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { api } from '@/lib/client';
@@ -8,7 +9,7 @@ import { useAuth } from '@/components/auth-provider';
 const input =
   'w-full rounded-xl border border-surface-2 bg-night px-3 py-2.5 outline-none focus:border-violet';
 
-export function AuthForm({ next }: { next: string }) {
+export function AuthForm({ next, notice }: { next: string; notice?: string }) {
   const router = useRouter();
   const { setUser } = useAuth();
   const [mode, setMode] = useState<'login' | 'register'>('login');
@@ -59,6 +60,11 @@ export function AuthForm({ next }: { next: string }) {
           ))}
         </div>
 
+        {notice && mode === 'login' && (
+          <p className="mb-4 rounded-xl bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
+            {notice}
+          </p>
+        )}
         <form onSubmit={onSubmit} className="space-y-4">
           {mode === 'register' && (
             <label className="block text-sm">
@@ -88,6 +94,13 @@ export function AuthForm({ next }: { next: string }) {
               className={input}
             />
           </label>
+          {mode === 'login' && (
+            <p className="-mt-2 text-right text-sm">
+              <Link href="/mot-de-passe-oublie" className="text-violet-glow hover:underline">
+                Mot de passe oublié ?
+              </Link>
+            </p>
+          )}
           {mode === 'register' && (
             <label className="flex items-start gap-2 text-sm text-muted">
               <input name="age" type="checkbox" required className="mt-1 accent-violet" />

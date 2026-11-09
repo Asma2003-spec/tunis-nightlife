@@ -27,7 +27,16 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
       message?: string;
       errors?: { message: string }[];
     } | null;
-    throw new ApiError(res.status, body?.errors?.[0]?.message ?? body?.message ?? 'Erreur réseau');
+    if (res.status === 429)
+      throw new ApiError(429, 'Trop de tentatives : réessaie dans une minute');
+    // Réponse non JSON : l'API ne répond pas (souvent en train de se réveiller sur l'offre gratuite)
+    if (!body) {
+      throw new ApiError(
+        res.status,
+        'Le serveur ne répond pas pour le moment : réessaie dans quelques secondes',
+      );
+    }
+    throw new ApiError(res.status, body.errors?.[0]?.message ?? body.message ?? 'Erreur');
   }
   const text = await res.text(); // corps vide (204, ou null renvoyé par l'API)
   return (text ? JSON.parse(text) : null) as T;
@@ -40,6 +49,13 @@ export const api = {
   register: (input: RegisterInput) =>
     call<AuthResponse>('/auth/register', { method: 'POST', body: JSON.stringify(input) }),
   logout: () => call<void>('/auth/logout', { method: 'POST' }),
+  forgotPassword: (email: string) =>
+    call<void>('/auth/forgot-password', { method: 'POST', body: JSON.stringify({ email }) }),
+  resetPassword: (token: string, password: string) =>
+    call<void>('/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({ token, password }),
+    }),
 
   reviews: (slug: string, page = 1) =>
     call<ReviewsPage>(`/venues/${slug}/reviews?page=${page}&pageSize=10`),

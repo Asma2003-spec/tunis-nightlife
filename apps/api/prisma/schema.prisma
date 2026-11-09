@@ -107,6 +107,7 @@ model User {
   reports          Report[]   @relation("ReportReporter")
   handledReports   Report[]   @relation("ReportHandler")
   createdVenues    Venue[]    @relation("VenueCreator")
+  passwordResets   PasswordResetToken[]
 
   @@map("users")
 }
@@ -338,4 +339,24 @@ model MediaFile {
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
 
   @@map("media_files")
+}
+
+// ---------------------------------------------------------------------
+// Mot de passe oublié
+// ---------------------------------------------------------------------
+
+/// Lien de réinitialisation envoyé par email. Seule l'empreinte SHA-256 du jeton est
+/// stockée : une fuite de la base ne permet pas d'utiliser les liens en cours.
+model PasswordResetToken {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  tokenHash String    @unique @map("token_hash") @db.VarChar(64)
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz(3)
+  usedAt    DateTime? @map("used_at") @db.Timestamptz(3)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("password_reset_tokens")
 }

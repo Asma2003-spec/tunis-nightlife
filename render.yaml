@@ -27,6 +27,11 @@ services:
         sync: false # ton email : ton compte administrateur en ligne
       - key: SEED_PASSWORD
         sync: false # ton mot de passe administrateur (12 caractères minimum)
+      # Lien « mot de passe oublié » envoyé par email : adresse publique du site
+      - key: APP_URL
+        value: https://tunis-nightlife.onrender.com
+      # Envoi des emails (Brevo) : BREVO_API_KEY et MAIL_FROM sont à ajouter à la main
+      # dans Render → tunis-nightlife-api → Environment (voir docs/deploiement.md)
 
   # ---------------- Site (Next.js) ----------------
   - type: web

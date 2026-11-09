@@ -53,3 +53,26 @@ Se connecter sur le site avec `SEED_ADMIN_EMAIL` / `SEED_PASSWORD` : le bouton *
   Si la page affiche « API non joignable », patienter puis recharger.
 - Le disque de Render est effacé à chaque redémarrage : les photos envoyées depuis le back-office
   sont donc stockées dans la base (table `media_files`). Utiliser des photos de moins de 4 Mo.
+
+## Mot de passe oublié : envoi des emails (Brevo)
+
+L'API envoie les liens de réinitialisation avec Brevo (gratuit, 300 emails par jour), par son API
+HTTP : l'offre gratuite de Render bloque les ports SMTP.
+
+1. Créer un compte gratuit sur **brevo.com**.
+2. **Expéditeur** : menu **Senders, domains & dedicated IPs** → **Senders** → **Add sender**,
+   avec ton adresse email, puis valider le code reçu par email.
+3. **Clé** : menu **SMTP & API** → onglet **API keys** → **Generate a new API key**, puis la copier
+   (elle commence par `xkeysib-`). Ne la partager avec personne.
+4. **Render** → `tunis-nightlife-api` → **Environment** → ajouter :
+   - `BREVO_API_KEY` : la clé copiée ;
+   - `MAIL_FROM` : l'adresse validée à l'étape 2 ;
+   puis **Save, rebuild and deploy**.
+
+`APP_URL` (adresse du site mise dans le lien) est déjà dans `render.yaml`.
+
+En local, sans `BREVO_API_KEY`, le lien de réinitialisation s'affiche dans le terminal de l'API.
+
+**Si l'email n'arrive pas** : regarder les courriers indésirables, puis les **Logs** de l'API.
+Une erreur Brevo `401` mentionnant une adresse IP : dans Brevo, menu **Security** →
+**Authorised IPs**, désactiver le blocage des adresses IP inconnues (Render change d'adresse IP).
