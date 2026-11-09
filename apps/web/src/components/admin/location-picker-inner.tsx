@@ -3,7 +3,8 @@
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { useEffect } from 'react';
-import { MapContainer, Marker, TileLayer, useMap, useMapEvents } from 'react-leaflet';
+import { MapContainer, Marker, useMap, useMapEvents } from 'react-leaflet';
+import { BaseTiles } from '../map/base-tiles';
 
 const pin = L.divIcon({
   className: '',
@@ -39,10 +40,7 @@ export default function LocationPickerInner({ lat, lng, onChange }: Props) {
       scrollWheelZoom
       style={{ height: 300, width: '100%', borderRadius: 12, cursor: 'crosshair' }}
     >
-      <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
-        url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-      />
+      <BaseTiles />
       <ClickToPlace onChange={onChange} />
       <Follow lat={lat} lng={lng} />
       <Marker

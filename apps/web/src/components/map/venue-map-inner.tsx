@@ -3,7 +3,8 @@
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { useEffect } from 'react';
-import { Circle, MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet';
+import { Circle, MapContainer, Marker, Popup, useMap } from 'react-leaflet';
+import { BaseTiles } from './base-tiles';
 import { directionsUrl } from '@/lib/geo';
 import type { MapPoint, VenueMapProps } from './venue-map';
 
@@ -55,11 +56,7 @@ export default function VenueMapInner({
       scrollWheelZoom
       style={{ height, width: '100%', borderRadius: 16 }}
     >
-      {/* Fond de carte sombre (CARTO) basé sur les données OpenStreetMap */}
-      <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
-        url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-      />
+      <BaseTiles />
       <FitBounds points={all} />
 
       {user && (
