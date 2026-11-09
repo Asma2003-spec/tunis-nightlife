@@ -1,0 +1,47 @@
+# Mise en ligne en un clic sur Render : « New → Blueprint » puis choisir ce dépôt GitHub.
+# Crée l'API et le site. La base de données est sur Neon (PostgreSQL + PostGIS).
+# À la création, Render demande 3 valeurs : DATABASE_URL, SEED_ADMIN_EMAIL, SEED_PASSWORD.
+services:
+  # ---------------- API (NestJS) ----------------
+  - type: web
+    name: tunis-nightlife-api
+    runtime: node
+    plan: free
+    region: frankfurt
+    buildCommand: npm install -g pnpm@10.18.0 && pnpm install --frozen-lockfile --prod=false && pnpm --filter @tn/api build
+    # Migrations, puis données de démo + compte admin si la base est vide, puis démarrage
+    startCommand: pnpm --filter @tn/api start:prod
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+      - key: TRUST_PROXY
+        value: "true"
+      - key: JWT_SECRET
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false # chaîne de connexion Neon
+      - key: SEED_ADMIN_EMAIL
+        sync: false # ton email : ton compte administrateur en ligne
+      - key: SEED_PASSWORD
+        sync: false # ton mot de passe administrateur (12 caractères minimum)
+
+  # ---------------- Site (Next.js) ----------------
+  - type: web
+    name: tunis-nightlife
+    runtime: node
+    plan: free
+    region: frankfurt
+    buildCommand: npm install -g pnpm@10.18.0 && pnpm install --frozen-lockfile --prod=false && pnpm --filter @tn/web build
+    startCommand: pnpm --filter @tn/web start
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+      # Adresse publique de l'API : le site relaie /api/v1 et /media vers elle.
+      # Si Render donne une autre adresse à l'API, la corriger ici (Environment) puis « Manual Deploy ».
+      - key: API_URL
+        value: https://tunis-nightlife-api.onrender.com/api/v1

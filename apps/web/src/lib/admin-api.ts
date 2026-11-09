@@ -15,11 +15,11 @@ import type {
   VenueStatus,
   VenueUpsertInput,
 } from '@tn/contracts';
-import { API_URL, ApiError } from './api';
+import { ApiError, BROWSER_API } from './api';
 
 async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
   const isForm = init.body instanceof FormData;
-  const res = await fetch(`${API_URL}${path}`, {
+  const res = await fetch(`${BROWSER_API}${path}`, {
     ...init,
     credentials: 'include',
     // Pour un FormData, le navigateur fixe lui-même le Content-Type multipart

@@ -31,9 +31,9 @@ photos, notes en étoiles des membres, carte, recherche « autour de moi », hor
 Comptes de démo : `admin@demo.local` (administrateur) et `moderateur@demo.local` (modérateur).
 Les droits sont vérifiés par l'API (`JwtAuthGuard` + `RolesGuard`) : masquer un menu ne suffit jamais.
 
-Envoi de photos : JPEG, PNG ou WebP, 5 Mo maximum, 10 par établissement. Le type réel du fichier est
-vérifié à partir de ses premiers octets et le nom est généré par le serveur
-(`apps/api/media/uploads/…`, exclu de Git).
+Envoi de photos : JPEG, PNG ou WebP, 5 Mo maximum, 10 par établissement, réduites dans le navigateur.
+Le type réel du fichier est vérifié à partir de ses premiers octets, le nom est généré par le
+serveur, et le fichier est stocké en base (table `media_files`) pour survivre aux redémarrages.
 
 > Projet portfolio full-stack. Les établissements fournis par le seed sont **fictifs** (`isDemo = true`)
 > et affichés avec un badge « Démo ».
@@ -175,6 +175,11 @@ avec le nombre d'avis.
 # après avoir modifié schema.prisma
 pnpm db:migrate     # prisma migrate dev : crée une nouvelle migration et l'applique
 ```
+
+## Mise en ligne
+
+Render (site + API, un seul Blueprint) + Neon (PostgreSQL + PostGIS), offres gratuites :
+guide pas à pas dans [docs/deploiement.md](docs/deploiement.md).
 
 ## Sécurité des comptes
 

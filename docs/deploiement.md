@@ -1,0 +1,55 @@
+# Mise en ligne — Tunis Nightlife (version simple)
+
+Deux services gratuits, aucune commande à taper :
+
+```
+Navigateur ──► Render « tunis-nightlife » (site) ──relais /api/v1 et /media──► Render « tunis-nightlife-api » ──► Neon (PostgreSQL + PostGIS)
+```
+
+## 1. Envoyer le code sur GitHub
+
+```powershell
+git add .
+git commit -m "Mise en ligne"
+git push
+```
+
+## 2. Base de données — neon.com
+
+1. Se connecter avec GitHub, **New project** : Postgres **16**, région **Frankfurt**.
+2. **Connect** : désactiver **Connection pooling**, puis **copier** la chaîne `postgresql://…?sslmode=require`.
+
+## 3. Site et API — render.com
+
+1. Se connecter avec GitHub, **New → Blueprint**, choisir le dépôt `tunis-nightlife`.
+2. Render affiche les 2 services du fichier `render.yaml` et demande 3 valeurs :
+   - `DATABASE_URL` : la chaîne copiée sur Neon ;
+   - `SEED_ADMIN_EMAIL` : ton email (ton compte administrateur en ligne) ;
+   - `SEED_PASSWORD` : ton mot de passe administrateur (12 caractères minimum, à garder pour toi).
+3. **Apply**, puis attendre que les deux services soient **Live** (environ 5 à 10 minutes).
+
+Au premier démarrage, l'API crée les tables, active PostGIS, ajoute les établissements de
+démonstration et ton compte administrateur. Aux démarrages suivants, elle ne touche plus aux données.
+
+## 4. C'est en ligne
+
+- Site public : `https://tunis-nightlife.onrender.com`
+- API : `https://tunis-nightlife-api.onrender.com/api/v1/health`
+
+Se connecter sur le site avec `SEED_ADMIN_EMAIL` / `SEED_PASSWORD` : le bouton **Admin** apparaît.
+
+**Si Render a donné une autre adresse à l'API** (nom déjà pris) : service `tunis-nightlife` →
+**Environment** → corriger `API_URL` → **Save, rebuild and deploy**.
+
+## Ensuite
+
+- Chaque `git push` met à jour le site et l'API automatiquement.
+- Application mobile : dans `apps/mobile/.env`,
+  `EXPO_PUBLIC_API_URL=https://tunis-nightlife-api.onrender.com/api/v1`.
+
+## Limites de l'offre gratuite
+
+- Les services se mettent en veille après 15 minutes sans visite ; le réveil prend environ une minute.
+  Si la page affiche « API non joignable », patienter puis recharger.
+- Le disque de Render est effacé à chaque redémarrage : les photos envoyées depuis le back-office
+  sont donc stockées dans la base (table `media_files`). Utiliser des photos de moins de 4 Mo.

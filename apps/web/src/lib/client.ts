@@ -10,14 +10,14 @@ import type {
   ReviewsPage,
   VenueSummary,
 } from '@tn/contracts';
-import { API_URL, ApiError } from './api';
+import { ApiError, BROWSER_API } from './api';
 
 /**
  * Appels depuis le navigateur. `credentials: 'include'` envoie le cookie de session
  * HttpOnly : le jeton n'est jamais lisible par le JavaScript de la page.
  */
 async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const res = await fetch(`${API_URL}${path}`, {
+  const res = await fetch(`${BROWSER_API}${path}`, {
     ...init,
     credentials: 'include',
     headers: { 'content-type': 'application/json', ...init.headers },

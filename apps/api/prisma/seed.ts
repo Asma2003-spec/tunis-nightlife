@@ -13,16 +13,36 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { hash } from '@node-rs/argon2';
 import { PrismaClient, type PriceRange, type VenueType } from '../src/generated/prisma/client';
 
-if (process.env.NODE_ENV === 'production') {
-  throw new Error('Le seed de démonstration ne doit jamais être exécuté en production.');
+/**
+ * --if-empty : utilisé au démarrage du serveur en ligne. Les données de démonstration et le
+ * compte administrateur ne sont créés que si la base est vide (premier déploiement) ;
+ * ensuite le seed ne touche plus jamais aux données.
+ */
+const IF_EMPTY = process.argv.includes('--if-empty');
+
+if (process.env.NODE_ENV === 'production' && !IF_EMPTY) {
+  throw new Error('En production, le seed ne peut être lancé qu’avec --if-empty.');
 }
 
 const prisma = new PrismaClient({
   adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL! }),
 });
 
-/** Mot de passe des comptes de démonstration (local uniquement). */
-const DEMO_PASSWORD = 'Demo-Password-2026!';
+/**
+ * Mot de passe des comptes de démonstration. Pour une base EN LIGNE, définir obligatoirement
+ * SEED_PASSWORD (et SEED_ADMIN_EMAIL) : le mot de passe par défaut est public sur GitHub.
+ */
+const DEMO_PASSWORD = process.env.SEED_PASSWORD || 'Demo-Password-2026!';
+const ADMIN_EMAIL = (process.env.SEED_ADMIN_EMAIL || 'admin@demo.local').toLowerCase();
+const isPublicPassword = !process.env.SEED_PASSWORD;
+
+if (isPublicPassword && !/localhost|127\.0\.0\.1/.test(process.env.DATABASE_URL ?? '')) {
+  throw new Error(
+    'Base distante détectée : définis SEED_PASSWORD (et SEED_ADMIN_EMAIL) avant de lancer le seed.',
+  );
+}
+if (DEMO_PASSWORD.length < 12)
+  throw new Error('SEED_PASSWORD doit contenir au moins 12 caractères.');
 
 const CITIES = [
   { slug: 'tunis', name: 'Tunis', nameAr: 'تونس' },
@@ -198,9 +218,14 @@ function nextLocal(weekday: number, hour: number, weeksAhead = 0): Date {
 }
 
 async function main() {
+  if (IF_EMPTY && (await prisma.user.count()) > 0) {
+    console.log('✓ Base déjà initialisée : seed ignoré.');
+    return;
+  }
   console.log('→ Nettoyage des données existantes');
   await prisma.$transaction([
     prisma.report.deleteMany(),
+    prisma.mediaFile.deleteMany(),
     prisma.favorite.deleteMany(),
     prisma.review.deleteMany(),
     prisma.event.deleteMany(),
@@ -218,7 +243,7 @@ async function main() {
   const admin = await prisma.user.create({
     data: {
       name: 'Admin Démo',
-      email: 'admin@demo.local',
+      email: ADMIN_EMAIL,
       passwordHash,
       role: 'ADMIN',
       ageConfirmedAt: new Date(),
@@ -354,7 +379,9 @@ async function main() {
   };
   console.log('✓ Seed terminé', counts);
   console.log(
-    `  Comptes de démo : admin@demo.local / moderateur@demo.local — mot de passe : ${DEMO_PASSWORD}`,
+    isPublicPassword
+      ? `  Comptes de démo : ${ADMIN_EMAIL} / moderateur@demo.local — mot de passe : ${DEMO_PASSWORD}`
+      : `  Administrateur : ${ADMIN_EMAIL} — mot de passe : celui défini dans SEED_PASSWORD`,
   );
 }
 

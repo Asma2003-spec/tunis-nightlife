@@ -108,8 +108,6 @@ export function AuthForm({ next }: { next: string }) {
             {busy ? 'Patiente…' : mode === 'login' ? 'Se connecter' : 'Créer mon compte'}
           </button>
         </form>
-
-        
       </div>
     </main>
   );

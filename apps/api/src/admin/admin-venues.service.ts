@@ -1,6 +1,4 @@
 import { randomUUID } from 'node:crypto';
-import { mkdir, unlink, writeFile } from 'node:fs/promises';
-import { dirname } from 'node:path';
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import type {
   AdminListQuery,
@@ -12,7 +10,6 @@ import type {
 import { VenueUpsertSchema } from '@tn/contracts';
 import type { z } from 'zod';
 import { Prisma } from '../generated/prisma/client';
-import { mediaPath } from '../media';
 import { PrismaService } from '../prisma/prisma.service';
 import { VenuesService } from '../venues/venues.service';
 import { MAX_PHOTOS_PER_VENUE, MAX_PHOTO_BYTES, detectImageType } from './image-validation';
@@ -179,32 +176,40 @@ export class AdminVenuesService {
       throw new BadRequestException(`${MAX_PHOTOS_PER_VENUE} photos maximum par établissement`);
     }
 
-    // Nom de fichier généré par le serveur : jamais le nom fourni par le client
+    // Nom généré par le serveur (jamais celui du client). Le fichier est stocké en base :
+    // il survit aux redémarrages des hébergeurs dont le disque est éphémère.
     const storageKey = `uploads/venues/${id}/${randomUUID()}.${ext}`;
-    const path = mediaPath(storageKey);
-    await mkdir(dirname(path), { recursive: true });
-    await writeFile(path, file.buffer);
-
     const position = Math.max(-1, ...venue.photos.map((p) => p.position)) + 1;
-    return this.prisma.venuePhoto.create({
-      data: {
-        venueId: id,
-        storageKey,
-        altText: altText.trim().slice(0, 160) || `${venue.name} — photo ${position + 1}`,
-        position,
-      },
-      select: { id: true, storageKey: true, altText: true, position: true },
-    });
+    const [, photo] = await this.prisma.$transaction([
+      this.prisma.mediaFile.create({
+        data: {
+          key: storageKey,
+          contentType: ext === 'jpg' ? 'image/jpeg' : `image/${ext}`,
+          size: file.size,
+          data: new Uint8Array(file.buffer),
+        },
+      }),
+      this.prisma.venuePhoto.create({
+        data: {
+          venueId: id,
+          storageKey,
+          altText: altText.trim().slice(0, 160) || `${venue.name} — photo ${position + 1}`,
+          position,
+        },
+        select: { id: true, storageKey: true, altText: true, position: true },
+      }),
+    ]);
+    return photo;
   }
 
   async deletePhoto(id: string, photoId: string) {
     const photo = await this.prisma.venuePhoto.findFirst({ where: { id: photoId, venueId: id } });
     if (!photo) throw new NotFoundException('Photo introuvable');
-    await this.prisma.venuePhoto.delete({ where: { id: photoId } });
-    // Les visuels de démo du dépôt ne sont jamais supprimés du disque
-    if (photo.storageKey.startsWith('uploads/')) {
-      await unlink(mediaPath(photo.storageKey)).catch(() => undefined);
-    }
+    // Les visuels de démo (fichiers du dépôt) ne sont pas en base : deleteMany ne fait rien pour eux
+    await this.prisma.$transaction([
+      this.prisma.venuePhoto.delete({ where: { id: photoId } }),
+      this.prisma.mediaFile.deleteMany({ where: { key: photo.storageKey } }),
+    ]);
     await this.normalizePositions(id);
   }
 

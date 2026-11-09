@@ -9,6 +9,25 @@ import { ErrorNote, btn } from './ui';
 type Photo = AdminVenueDetail['photos'][number];
 
 const ACCEPT = 'image/jpeg,image/png,image/webp';
+const MAX_SIDE = 1920;
+
+/**
+ * Réduit la photo dans le navigateur avant l'envoi (1920 px max, JPEG qualité 0,85) :
+ * envoi plus rapide, moins de stockage, et sous les limites de taille des hébergeurs.
+ */
+async function shrink(file: File): Promise<File> {
+  if (file.size < 800 * 1024) return file;
+  const bitmap = await createImageBitmap(file);
+  const scale = Math.min(1, MAX_SIDE / Math.max(bitmap.width, bitmap.height));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(bitmap.width * scale);
+  canvas.height = Math.round(bitmap.height * scale);
+  canvas.getContext('2d')!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  bitmap.close();
+  const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, 'image/jpeg', 0.85));
+  if (!blob) return file;
+  return new File([blob], file.name.replace(/\.\w+$/, '.jpg'), { type: 'image/jpeg' });
+}
 
 export function PhotoManager({ venueId, initial }: { venueId: string; initial: Photo[] }) {
   const [photos, setPhotos] = useState(initial);
@@ -25,8 +44,10 @@ export function PhotoManager({ venueId, initial }: { venueId: string; initial: P
     try {
       // Envoi un par un : un fichier refusé n'empêche pas les autres
       for (const file of Array.from(files)) {
-        if (file.size > 5 * 1024 * 1024) throw new Error(`${file.name} : 5 Mo maximum`);
-        await adminApi.uploadPhoto(venueId, file, '');
+        if (!ACCEPT.split(',').includes(file.type)) {
+          throw new Error(`${file.name} : format accepté JPEG, PNG ou WebP`);
+        }
+        await adminApi.uploadPhoto(venueId, await shrink(file), '');
       }
     } catch (e) {
       setError((e as Error).message);
@@ -59,7 +80,8 @@ export function PhotoManager({ venueId, initial }: { venueId: string; initial: P
         <div>
           <h2 className="font-semibold">Photos ({photos.length}/10)</h2>
           <p className="text-sm text-muted">
-            JPEG, PNG ou WebP, 5 Mo maximum. La première est la couverture.
+            JPEG, PNG ou WebP. Les grandes photos sont réduites automatiquement. La première est la
+            couverture.
           </p>
         </div>
         <label

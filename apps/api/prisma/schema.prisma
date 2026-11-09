@@ -320,3 +320,20 @@ model Report {
   @@index([targetType, targetId])
   @@map("reports")
 }
+
+// ---------------------------------------------------------------------
+// Fichiers envoyés (photos)
+// ---------------------------------------------------------------------
+
+/// Photos envoyées depuis le back-office, stockées en base : elles survivent aux
+/// redémarrages des hébergeurs gratuits dont le disque est éphémère.
+/// Servies par l'API sous /media/<key>.
+model MediaFile {
+  key         String   @id @db.VarChar(255)
+  contentType String   @map("content_type") @db.VarChar(50)
+  size        Int
+  data        Bytes
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@map("media_files")
+}

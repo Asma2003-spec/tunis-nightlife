@@ -1,15 +1,18 @@
-import {
-  mediaUrl,
-  type EventItem,
-  type Paginated,
-  type VenueDetail,
-  type VenueSummary,
-} from '@tn/contracts';
+import { type EventItem, type Paginated, type VenueDetail, type VenueSummary } from '@tn/contracts';
 
-export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api/v1';
+/** URL absolue de l'API, utilisée par le serveur Next.js (rendu des pages). */
+export const API_URL =
+  process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api/v1';
 
-/** URL publique d'une photo à partir de sa clé de stockage. */
-export const media = (key: string | null | undefined) => mediaUrl(API_URL, key);
+/**
+ * Le navigateur passe par le même domaine que le site : Next.js relaie /api/v1 et /media
+ * vers l'API (voir next.config.ts). Le cookie de session reste ainsi « first-party »,
+ * ce qui évite le blocage des cookies tiers (Safari, Firefox…) et toute config CORS.
+ */
+export const BROWSER_API = '/api/v1';
+
+/** URL d'une photo à partir de sa clé de stockage (relayée par le site). */
+export const media = (key: string | null | undefined) => (key ? `/media/${key}` : null);
 
 export class ApiError extends Error {
   constructor(
