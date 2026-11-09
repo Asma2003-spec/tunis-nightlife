@@ -16,10 +16,11 @@ import type {
   VenueUpsertInput,
 } from '@tn/contracts';
 import { ApiError, BROWSER_API } from './api';
+import { SERVER_DOWN_MESSAGE, fetchWithWake } from './api-wake';
 
 async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
   const isForm = init.body instanceof FormData;
-  const res = await fetch(`${BROWSER_API}${path}`, {
+  const res = await fetchWithWake(`${BROWSER_API}${path}`, {
     ...init,
     credentials: 'include',
     // Pour un FormData, le navigateur fixe lui-même le Content-Type multipart
@@ -37,7 +38,7 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
         ? 'Fichier trop lourd (5 Mo maximum)'
         : first
           ? `${first.path ? first.path + ' : ' : ''}${first.message}`
-          : (body?.message ?? 'Erreur'),
+          : (body?.message ?? (body ? 'Erreur' : SERVER_DOWN_MESSAGE)),
     );
   }
   const text = await res.text();

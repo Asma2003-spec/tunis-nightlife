@@ -1,4 +1,5 @@
 import { fetchVenues } from '@/lib/api';
+import { ApiWaking } from '@/components/api-wake';
 import { NearbyExplorer } from './nearby-explorer';
 
 export const dynamic = 'force-dynamic';
@@ -11,5 +12,7 @@ export default async function MapPage({
 }) {
   const { focus } = await searchParams;
   const all = await fetchVenues({ pageSize: '50', sort: 'rating' }).catch(() => null);
-  return <NearbyExplorer venues={all?.items ?? []} focus={focus} />;
+  const explorer = <NearbyExplorer venues={all?.items ?? []} focus={focus} />;
+  // API endormie : la carte s'affiche vide puis se remplit à son réveil
+  return all ? explorer : <ApiWaking>{explorer}</ApiWaking>;
 }

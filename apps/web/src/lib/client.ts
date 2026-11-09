@@ -11,13 +11,14 @@ import type {
   VenueSummary,
 } from '@tn/contracts';
 import { ApiError, BROWSER_API } from './api';
+import { SERVER_DOWN_MESSAGE, fetchWithWake } from './api-wake';
 
 /**
  * Appels depuis le navigateur. `credentials: 'include'` envoie le cookie de session
  * HttpOnly : le jeton n'est jamais lisible par le JavaScript de la page.
  */
 async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const res = await fetch(`${BROWSER_API}${path}`, {
+  const res = await fetchWithWake(`${BROWSER_API}${path}`, {
     ...init,
     credentials: 'include',
     headers: { 'content-type': 'application/json', ...init.headers },
@@ -31,10 +32,7 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
       throw new ApiError(429, 'Trop de tentatives : réessaie dans une minute');
     // Réponse non JSON : l'API ne répond pas (souvent en train de se réveiller sur l'offre gratuite)
     if (!body) {
-      throw new ApiError(
-        res.status,
-        'Le serveur ne répond pas pour le moment : réessaie dans quelques secondes',
-      );
+      throw new ApiError(res.status, SERVER_DOWN_MESSAGE);
     }
     throw new ApiError(res.status, body.errors?.[0]?.message ?? body.message ?? 'Erreur');
   }

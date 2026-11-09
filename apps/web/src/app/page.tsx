@@ -3,6 +3,7 @@ import { VENUE_TYPES, VENUE_TYPE_LABELS } from '@tn/contracts';
 import { fetchEvents, fetchFilters, fetchVenues, media } from '@/lib/api';
 import { VenueCard } from '@/components/venue-card';
 import { EventDate } from '@/components/event-date';
+import { ApiWaking } from '@/components/api-wake';
 
 export const dynamic = 'force-dynamic';
 
@@ -94,10 +95,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
       </form>
 
       {result === null ? (
-        <p className="rounded-xl border border-surface-2 bg-surface p-6 text-muted">
-          L’API n’est pas joignable. Lance <code className="text-violet-glow">pnpm api:dev</code>{' '}
-          puis recharge la page.
-        </p>
+        <ApiWaking />
       ) : (
         <>
           <p className="mb-4 text-sm text-muted">

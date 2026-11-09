@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { ApiWakeBanner } from '@/components/api-wake';
 import { AuthProvider } from '@/components/auth-provider';
 import { SiteHeader } from '@/components/site-header';
 import './globals.css';
@@ -17,6 +18,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <SiteHeader />
           {children}
         </AuthProvider>
+        <ApiWakeBanner />
       </body>
     </html>
   );

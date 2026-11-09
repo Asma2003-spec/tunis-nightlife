@@ -24,7 +24,11 @@ export class ApiError extends Error {
 }
 
 async function get<T>(path: string, revalidate = 30): Promise<T> {
-  const res = await fetch(`${API_URL}${path}`, { next: { revalidate } });
+  // Délai court : si l'API dort, la page s'affiche tout de suite et se met à jour à son réveil
+  const res = await fetch(`${API_URL}${path}`, {
+    next: { revalidate },
+    signal: AbortSignal.timeout(8_000),
+  });
   if (!res.ok) throw new ApiError(res.status, `API ${res.status}`);
   return res.json() as Promise<T>;
 }

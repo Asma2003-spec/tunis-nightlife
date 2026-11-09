@@ -15,22 +15,25 @@ import { VenueMap } from '@/components/map/venue-map';
 import { directionsUrl } from '@/lib/geo';
 import { FavoriteButton } from '@/components/favorite-button';
 import { ReviewsSection } from '@/components/reviews-section';
+import { ApiWaking } from '@/components/api-wake';
 
 export const dynamic = 'force-dynamic';
 
 type Params = { params: Promise<{ slug: string }> };
 
+/** null : l'API ne répond pas (souvent en train de se réveiller). */
 async function load(slug: string) {
   try {
     return await fetchVenue(slug);
   } catch (e) {
     if (e instanceof ApiError && e.status === 404) notFound();
-    throw e;
+    return null;
   }
 }
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const venue = await load((await params).slug);
+  if (!venue) return { title: 'Tunis Nightlife' };
   return { title: `${venue.name} — Tunis Nightlife`, description: venue.description };
 }
 
@@ -40,6 +43,13 @@ export default async function VenuePage({ params }: Params) {
     load(slug),
     fetchEvents({ venue: slug, limit: '5' }).catch(() => []),
   ]);
+  if (!venue) {
+    return (
+      <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
+        <ApiWaking />
+      </main>
+    );
+  }
   const open = isOpenNow(venue.openingHours);
   const photos = venue.photos.map((p) => ({ ...p, url: media(p.storageKey)! }));
 
