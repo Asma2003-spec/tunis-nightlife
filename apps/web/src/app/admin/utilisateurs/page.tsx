@@ -10,7 +10,16 @@ import {
 } from '@tn/contracts';
 import { adminApi } from '@/lib/admin-api';
 import { useAuth } from '@/components/auth-provider';
-import { Empty, ErrorNote, PageHeader, Pagination, Toolbar, field } from '@/components/admin/ui';
+import { PasswordResetDialog } from '@/components/admin/password-reset-dialog';
+import {
+  Empty,
+  ErrorNote,
+  PageHeader,
+  Pagination,
+  Toolbar,
+  btn,
+  field,
+} from '@/components/admin/ui';
 
 const STATUSES = [
   { value: '', label: 'Tous' },
@@ -27,6 +36,7 @@ export default function AdminUsersPage() {
   const [page, setPage] = useState(1);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [resetting, setResetting] = useState<AdminUserRow | null>(null);
 
   const load = useCallback(() => {
     adminApi
@@ -87,6 +97,7 @@ export default function AdminUsersPage() {
                 <th className="px-4 py-3 font-medium">Inscrit le</th>
                 <th className="px-4 py-3 font-medium">Avis</th>
                 <th className="px-4 py-3 font-medium">Rôle</th>
+                <th className="px-4 py-3 font-medium">Mot de passe</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-surface-2">
@@ -122,6 +133,18 @@ export default function AdminUsersPage() {
                       ))}
                     </select>
                   </td>
+                  <td className="px-4 py-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNotice(null);
+                        setResetting(u);
+                      }}
+                      className={`${btn.ghost} whitespace-nowrap`}
+                    >
+                      Réinitialiser
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -130,6 +153,14 @@ export default function AdminUsersPage() {
       )}
       {data && (
         <Pagination page={page} pageSize={data.pageSize} total={data.total} onPage={setPage} />
+      )}
+      {resetting && (
+        <PasswordResetDialog
+          user={resetting}
+          isMe={resetting.id === me?.id}
+          onClose={() => setResetting(null)}
+          onDone={setNotice}
+        />
       )}
     </>
   );

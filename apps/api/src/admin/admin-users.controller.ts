@@ -8,12 +8,16 @@ import {
   Param,
   ParseUUIDPipe,
   Patch,
+  Put,
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { hash } from '@node-rs/argon2';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import {
   AdminListQuerySchema,
+  AdminPasswordResetSchema,
   RoleChangeSchema,
   type AdminListQuery,
   type AdminUserRow,
@@ -98,5 +102,29 @@ export class AdminUsersController {
     const user = await this.prisma.user.findFirst({ where: { id, deletedAt: null } });
     if (!user) throw new NotFoundException('Utilisateur introuvable');
     await this.prisma.user.update({ where: { id }, data: { role: body.role } });
+  }
+
+  @Put(':id/password')
+  @HttpCode(204)
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @ApiOperation({
+    summary: 'Définir un nouveau mot de passe pour un utilisateur',
+    description:
+      'Le mot de passe est haché (Argon2id) et jamais renvoyé. Les sessions ouvertes du compte sont fermées.',
+  })
+  async resetPassword(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+    @Body(new ZodValidationPipe(AdminPasswordResetSchema))
+    body: z.infer<typeof AdminPasswordResetSchema>,
+  ) {
+    const user = await this.prisma.user.findFirst({
+      where: { id, deletedAt: null },
+      select: { id: true },
+    });
+    if (!user) throw new NotFoundException('Utilisateur introuvable');
+    await this.prisma.user.update({
+      where: { id },
+      data: { passwordHash: await hash(body.password), passwordChangedAt: new Date() },
+    });
   }
 }

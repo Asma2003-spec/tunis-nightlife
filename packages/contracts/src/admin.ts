@@ -227,6 +227,12 @@ export interface AdminReportRow {
 
 export const RoleChangeSchema = z.object({ role: UserRoleSchema });
 
+/** Nouveau mot de passe choisi par un administrateur (mêmes règles qu'à l'inscription). */
+export const AdminPasswordResetSchema = z.object({
+  password: z.string().min(8, 'Au moins 8 caractères').max(128, '128 caractères maximum'),
+});
+export type AdminPasswordResetInput = z.infer<typeof AdminPasswordResetSchema>;
+
 export interface AdminUserRow {
   id: string;
   name: string;

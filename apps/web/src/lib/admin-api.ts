@@ -98,6 +98,8 @@ export const adminApi = {
   users: (p: ListParams = {}) => call<Paginated<AdminUserRow>>(`/admin/users?${qs(p)}`),
   setRole: (id: string, role: UserRole) =>
     call<void>(`/admin/users/${id}/role`, { method: 'PATCH', body: json({ role }) }),
+  resetPassword: (id: string, password: string) =>
+    call<void>(`/admin/users/${id}/password`, { method: 'PUT', body: json({ password }) }),
 
   /** Signalement par un membre (côté public). */
   report: (body: CreateReportInput) =>

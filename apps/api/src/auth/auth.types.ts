@@ -16,6 +16,8 @@ export interface AuthRequest extends Request {
 export interface JwtPayload {
   sub: string;
   role: UserRole;
+  /** Date d'émission (secondes), ajoutée automatiquement par @nestjs/jwt. */
+  iat?: number;
 }
 
 /** Nom du cookie de session utilisé par le Web. */

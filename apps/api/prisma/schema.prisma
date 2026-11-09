@@ -91,6 +91,8 @@ model User {
   /// Toujours enregistré en minuscules (normalisé par l'API) — unicité insensible à la casse.
   email          String    @unique @db.VarChar(254)
   passwordHash   String    @map("password_hash")
+  /// Date du dernier changement de mot de passe : les sessions ouvertes avant sont refusées.
+  passwordChangedAt DateTime? @map("password_changed_at") @db.Timestamptz(3)
   role           UserRole  @default(USER)
   /// Date à laquelle l'utilisateur a confirmé être majeur.
   ageConfirmedAt DateTime? @map("age_confirmed_at") @db.Timestamptz(3)

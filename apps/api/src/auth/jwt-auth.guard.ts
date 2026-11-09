@@ -20,6 +20,7 @@ export const OptionalAuth = () => SetMetadata(OPTIONAL_AUTH, true);
  *  - par le mobile dans l'en-tête `Authorization: Bearer <jeton>`
  * L'utilisateur est rechargé depuis la base : un compte supprimé ou un rôle modifié
  * est pris en compte immédiatement (on ne fait jamais confiance au rôle envoyé par le client).
+ * Après une réinitialisation du mot de passe, les sessions ouvertes avant sont refusées.
  */
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
@@ -46,10 +47,18 @@ export class JwtAuthGuard implements CanActivate {
       const payload = await this.jwt.verifyAsync<JwtPayload>(token);
       const user = await this.prisma.user.findFirst({
         where: { id: payload.sub, deletedAt: null },
-        select: { id: true, name: true, email: true, role: true },
+        select: { id: true, name: true, email: true, role: true, passwordChangedAt: true },
       });
       if (!user) throw new Error('Utilisateur introuvable');
-      req.user = user;
+      // Mot de passe changé après l'ouverture de la session : la session n'est plus valable
+      if (
+        user.passwordChangedAt &&
+        (payload.iat ?? 0) < Math.floor(user.passwordChangedAt.getTime() / 1000)
+      ) {
+        throw new Error('Session antérieure au changement de mot de passe');
+      }
+      const { passwordChangedAt: _changed, ...authUser } = user;
+      req.user = authUser;
       return true;
     } catch {
       if (optional) return true;
