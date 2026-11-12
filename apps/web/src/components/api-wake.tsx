@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { getApiStatus, subscribeApiStatus, waitForApi, type ApiStatus } from '@/lib/api-wake';
 
 /**
@@ -9,9 +9,31 @@ import { getApiStatus, subscribeApiStatus, waitForApi, type ApiStatus } from '@/
  * qui n'ont pas pu se charger pendant ce temps. Placée une seule fois dans le layout.
  */
 export function ApiWakeBanner() {
+  const router = useRouter();
   const [status, setStatus] = useState<ApiStatus>(getApiStatus);
 
-  useEffect(() => subscribeApiStatus(setStatus), []);
+  const wasDown = useRef(false);
+
+  useEffect(
+    () =>
+      subscribeApiStatus((next) => {
+        setStatus(next);
+        if (next === 'down') wasDown.current = true;
+        // Serveur enfin réveillé après une longue attente : on recharge les données de la page
+        if (next === 'ok' && wasDown.current) {
+          wasDown.current = false;
+          router.refresh();
+        }
+      }),
+    [router],
+  );
+
+  useEffect(() => {
+    // Toujours pas de réponse : on continue d'essayer en arrière-plan, sans action du visiteur
+    if (status !== 'down') return;
+    const timer = setInterval(() => void waitForApi(), 5_000);
+    return () => clearInterval(timer);
+  }, [status]);
 
   useEffect(() => {
     // Photo relayée vers l'API (/media/…) en erreur : on attend l'API puis on la recharge une fois
@@ -47,13 +69,18 @@ export function ApiWakeBanner() {
             <span className="font-semibold">Le serveur démarre…</span>{' '}
             <span className="text-muted">
               L’hébergement gratuit se met en veille sans visite : le réveil prend environ une
-              minute. La page se met à jour toute seule.
+              minute, parfois deux. La page se met à jour toute seule.
             </span>
           </p>
         </div>
       ) : (
         <div className="flex items-center justify-between gap-3">
-          <p className="text-pink-300">Le serveur ne répond toujours pas.</p>
+          <p>
+            <span className="font-semibold text-pink-300">
+              Le serveur met plus de temps que prévu.
+            </span>{' '}
+            <span className="text-muted">Nouvel essai automatique en cours…</span>
+          </p>
           <button
             type="button"
             onClick={() => window.location.reload()}

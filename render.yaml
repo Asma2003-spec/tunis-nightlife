@@ -8,9 +8,10 @@ services:
     runtime: node
     plan: free
     region: frankfurt
-    buildCommand: npm install -g pnpm@10.18.0 && pnpm install --frozen-lockfile --prod=false && pnpm --filter @tn/api build
-    # Migrations, puis données de démo + compte admin si la base est vide, puis démarrage
-    startCommand: pnpm --filter @tn/api start:prod
+    # Construction, puis migrations et données de démo + compte admin si la base est vide.
+    # Fait pendant le build (et non au démarrage) : le réveil après la mise en veille est bien plus rapide.
+    buildCommand: npm install -g pnpm@10.18.0 && pnpm install --frozen-lockfile --prod=false && pnpm --filter @tn/api build && pnpm --filter @tn/api db:deploy
+    startCommand: cd apps/api && node dist/main.js
     healthCheckPath: /api/v1/health
     envVars:
       - key: NODE_VERSION

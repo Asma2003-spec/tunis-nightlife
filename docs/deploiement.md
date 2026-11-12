@@ -28,8 +28,10 @@ git push
    - `SEED_PASSWORD` : ton mot de passe administrateur (12 caractères minimum, à garder pour toi).
 3. **Apply**, puis attendre que les deux services soient **Live** (environ 5 à 10 minutes).
 
-Au premier démarrage, l'API crée les tables, active PostGIS, ajoute les établissements de
-démonstration et ton compte administrateur. Aux démarrages suivants, elle ne touche plus aux données.
+À la première construction, Render crée les tables, active PostGIS, ajoute les établissements de
+démonstration et ton compte administrateur. Ensuite, chaque construction applique seulement les
+nouvelles migrations : les données ne sont jamais réinitialisées. Le démarrage, lui, ne fait que
+lancer l'API, pour que le réveil après la mise en veille soit rapide.
 
 ## 4. C'est en ligne
 

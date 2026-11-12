@@ -12,7 +12,8 @@ export type ApiStatus = 'ok' | 'waking' | 'down';
 
 const HEALTH_URL = '/api/v1/health';
 const SHOW_BANNER_AFTER_MS = 2_500;
-const GIVE_UP_AFTER_MS = 150_000;
+// Réveil complet de l'offre gratuite : souvent 1 minute, parfois 2 ou 3
+const GIVE_UP_AFTER_MS = 300_000;
 export const SERVER_DOWN_MESSAGE =
   'Le serveur ne répond pas pour le moment : réessaie dans quelques secondes';
 
@@ -37,14 +38,14 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 async function ping(): Promise<boolean> {
   try {
-    const res = await fetch(HEALTH_URL, { cache: 'no-store', signal: AbortSignal.timeout(20_000) });
+    const res = await fetch(HEALTH_URL, { cache: 'no-store', signal: AbortSignal.timeout(60_000) });
     return res.ok;
   } catch {
     return false;
   }
 }
 
-/** Attend que l'API réponde (2 min 30 au plus). Un seul réveil à la fois pour toute la page. */
+/** Attend que l'API réponde (5 minutes au plus). Un seul réveil à la fois pour toute la page. */
 export function waitForApi(): Promise<boolean> {
   pending ??= (async () => {
     const started = Date.now();
